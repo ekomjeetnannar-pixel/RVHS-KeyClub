@@ -4,6 +4,20 @@
 
 document.addEventListener('DOMContentLoaded', () => {
 
+  /* ---------- Lenis Smooth Scroll Initialization ---------- */
+  const lenis = new Lenis({
+    duration: 1.2,
+    easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+    smoothWheel: true,
+    smoothTouch: false,
+  });
+
+  function raf(time) {
+    lenis.raf(time);
+    requestAnimationFrame(raf);
+  }
+  requestAnimationFrame(raf);
+
   /* ---------- Leadership team data ---------- */
   const team = [
     { name: 'Eeshan Satija', role: 'Lieutenant Governor', desc: 'Leads Division 14, supports its Key Clubs, oversees the Division Leadership Team, and coordinates division-wide service, events, and initiatives while connecting the division with the CNH District.' },
@@ -21,128 +35,135 @@ document.addEventListener('DOMContentLoaded', () => {
   const grid = document.getElementById('teamGrid');
   if (grid) {
     grid.innerHTML = team.map((member, i) => `
-      <article class="team-card reveal" data-index="${i}" tabindex="0" role="button" aria-expanded="false">
-        <div class="team-card-top">
-          <div>
-            <span class="team-name">${member.name}</span>
-            <span class="team-role">${member.role}</span>
-          </div>
-          <span class="team-plus" aria-hidden="true">+</span>
-        </div>
-        <p class="team-desc">${member.desc}</p>
-      </article>
-    `).join('');
+${member.name}
+${member.role}
 
-    grid.querySelectorAll('.team-card').forEach(card => {
-      const toggle = () => {
-        const isOpen = card.classList.toggle('open');
-        card.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-      };
-      card.addEventListener('click', toggle);
-      card.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          toggle();
-        }
-      });
-    });
-  }
+${member.desc}
 
-  /* ---------- Mobile nav toggle ---------- */
-  const navToggle = document.getElementById('navToggle');
-  const mainNav = document.getElementById('mainNav');
+`).join('');
 
-  if (navToggle && mainNav) {
-    navToggle.addEventListener('click', () => {
-      const open = mainNav.classList.toggle('open');
-      navToggle.classList.toggle('open', open);
-      navToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-    });
-
-    mainNav.querySelectorAll('.nav-link').forEach(link => {
-      link.addEventListener('click', () => {
-        mainNav.classList.remove('open');
-        navToggle.classList.remove('open');
-        navToggle.setAttribute('aria-expanded', 'false');
-      });
-    });
-  }
-
-  /* ---------- Active nav link on scroll ---------- */
-  const sections = document.querySelectorAll('main section[id]');
-  const navLinks = document.querySelectorAll('.nav-link');
-
-  const setActiveLink = () => {
-    let current = '';
-    sections.forEach(section => {
-      const top = section.offsetTop - 120;
-      if (window.scrollY >= top) current = section.getAttribute('id');
-    });
-    navLinks.forEach(link => {
-      link.classList.toggle('active', link.getAttribute('href') === `#${current}`);
-    });
+grid.querySelectorAll('.team-card').forEach(card => {
+  const toggle = () => {
+    const isOpen = card.classList.toggle('open');
+    card.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
   };
+  card.addEventListener('click', toggle);
+  card.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      toggle();
+    }
+  });
+});
+}
 
-  /* ---------- Scroll progress bar ---------- */
-  const progressBar = document.getElementById('progressBar');
-  const updateProgress = () => {
-    const scrollTop = window.scrollY;
-    const docHeight = document.documentElement.scrollHeight - window.innerHeight;
-    const pct = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
-    if (progressBar) progressBar.style.width = `${pct}%`;
-  };
+/* ---------- Mobile nav toggle & smooth anchor links ---------- */
+const navToggle = document.getElementById('navToggle');
+const mainNav = document.getElementById('mainNav');
 
-  window.addEventListener('scroll', () => {
-    setActiveLink();
-    updateProgress();
-  }, { passive: true });
+if (navToggle && mainNav) {
+navToggle.addEventListener('click', () => {
+const open = mainNav.classList.toggle('open');
+navToggle.classList.toggle('open', open);
+navToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+});
 
-  setActiveLink();
-  updateProgress();
+mainNav.querySelectorAll('.nav-link').forEach(link => {
+  link.addEventListener('click', (e) => {
+    mainNav.classList.remove('open');
+    navToggle.classList.remove('open');
+    navToggle.setAttribute('aria-expanded', 'false');
 
-  /* ---------- Reveal on scroll ---------- */
-  const revealTargets = document.querySelectorAll('.about-card, .team-card, .opp-step, .opp-card, .contact-card, .section-head');
-  revealTargets.forEach(el => el.classList.add('reveal'));
-
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('in-view');
-        observer.unobserve(entry.target);
+    // Smooth scroll to anchor using Lenis
+    const targetId = link.getAttribute('href');
+    if (targetId.startsWith('#')) {
+      e.preventDefault();
+      const targetEl = document.querySelector(targetId);
+      if (targetEl) {
+        lenis.scrollTo(targetEl, { offset: -80 });
       }
-    });
-  }, { threshold: 0.12 });
+    }
+  });
+});
+}
 
-  revealTargets.forEach(el => observer.observe(el));
+/* ---------- Active nav link on scroll ---------- */
+const sections = document.querySelectorAll('main section[id]');
+const navLinks = document.querySelectorAll('.nav-link');
 
-  /* ---------- Animated stat counters ---------- */
-  const stats = document.querySelectorAll('.stat');
-  const statObserver = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (!entry.isIntersecting) return;
-      const el = entry.target;
-      const target = parseInt(el.getAttribute('data-count'), 10);
-      const numEl = el.querySelector('.stat-num');
-      let current = 0;
-      const step = Math.max(1, Math.round(target / 30));
-      const tick = () => {
-        current = Math.min(target, current + step);
-        numEl.textContent = current;
-        if (current < target) requestAnimationFrame(tick);
-      };
-      tick();
-      statObserver.unobserve(el);
-    });
-  }, { threshold: 0.4 });
+const setActiveLink = () => {
+let current = '';
+const scrollPos = window.scrollY || window.pageYOffset;
+sections.forEach(section => {
+const top = section.offsetTop - 120;
+if (scrollPos >= top) current = section.getAttribute('id');
+});
+navLinks.forEach(link => {
+link.classList.toggle('active', link.getAttribute('href') === #${current});
+});
+};
 
-  stats.forEach(el => statObserver.observe(el));
+/* ---------- Scroll progress bar ---------- */
+const progressBar = document.getElementById('progressBar');
+const updateProgress = () => {
+const scrollTop = window.scrollY || window.pageYOffset;
+const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+const pct = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+if (progressBar) progressBar.style.width = ${pct}%;
+};
 
-  /* ---------- Back to top ---------- */
-  const toTop = document.getElementById('toTop');
-  if (toTop) {
-    toTop.addEventListener('click', () => {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-  }
+/* Listen for Lenis scroll events */
+lenis.on('scroll', () => {
+setActiveLink();
+updateProgress();
+});
+
+setActiveLink();
+updateProgress();
+
+/* ---------- Reveal on scroll ---------- */
+const revealTargets = document.querySelectorAll('.about-card, .team-card, .opp-step, .opp-card, .contact-card, .section-head');
+revealTargets.forEach(el => el.classList.add('reveal'));
+
+const observer = new IntersectionObserver((entries) => {
+entries.forEach(entry => {
+if (entry.isIntersecting) {
+entry.target.classList.add('in-view');
+observer.unobserve(entry.target);
+}
+});
+}, { threshold: 0.12 });
+
+revealTargets.forEach(el => observer.observe(el));
+
+/* ---------- Animated stat counters ---------- */
+const stats = document.querySelectorAll('.stat');
+const statObserver = new IntersectionObserver((entries) => {
+entries.forEach(entry => {
+if (!entry.isIntersecting) return;
+const el = entry.target;
+const target = parseInt(el.getAttribute('data-count'), 10);
+const numEl = el.querySelector('.stat-num');
+let current = 0;
+const step = Math.max(1, Math.round(target / 30));
+const tick = () => {
+current = Math.min(target, current + step);
+numEl.textContent = current;
+if (current < target) requestAnimationFrame(tick);
+};
+tick();
+statObserver.unobserve(el);
+});
+}, { threshold: 0.4 });
+
+stats.forEach(el => statObserver.observe(el));
+
+/* ---------- Back to top ---------- */
+const toTop = document.getElementById('toTop');
+if (toTop) {
+toTop.addEventListener('click', () => {
+lenis.scrollTo(0);
+});
+}
 
 });
